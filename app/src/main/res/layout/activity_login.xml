@@ -27,7 +27,7 @@
         android:textColor="@android:color/white"
         android:backgroundTint="@android:color/white"
         android:textColorHint="@android:color/white"
-        android:text="admin"/>
+        android:text="user"/>
 
     <EditText
         android:id="@+id/password"

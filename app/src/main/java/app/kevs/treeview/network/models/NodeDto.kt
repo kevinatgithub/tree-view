@@ -2,7 +2,7 @@ package app.kevs.treeview.network.models
 
 import com.google.gson.annotations.SerializedName
 
-public class Node{
+public class NodeDto{
 
     constructor(ProjectName: String?, NodeName: String?, Path: String?) {
         this.ProjectName = ProjectName

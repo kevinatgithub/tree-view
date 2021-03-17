@@ -1,7 +1,7 @@
 package app.kevs.treeview.repository
 
 import android.content.Context
-import app.kevs.treeview.network.models.Node
+import app.kevs.treeview.network.models.NodeDto
 import com.imu.flowerdelivery.network.ApiManager
 import com.imu.flowerdelivery.network.callbacks.ArrayResponseHandler
 import com.imu.flowerdelivery.network.callbacks.ObjectResponseHandler
@@ -14,18 +14,18 @@ class NodeApiRepository(ctx: Context, project: String) : INodeDataRepository{
     override fun RemoveNode(
         nodeName: String,
         path: String,
-        handler: ObjectResponseHandler<Node>
+        handler: ObjectResponseHandler<NodeDto>
     ) {
-        val node = Node(project, nodeName, path)
+        val node = NodeDto(project, nodeName, path)
         api.deleteNode(node).enqueue(ApiManager.setDefaultHandler(handler))
     }
 
-    override fun AddNode(nodeName: String, path: String, handler: ObjectResponseHandler<Node>) {
-        val node = Node(project, nodeName, path)
+    override fun AddNode(nodeName: String, path: String, handler: ObjectResponseHandler<NodeDto>) {
+        val node = NodeDto(project, nodeName, path)
         api.addNode(node).enqueue(ApiManager.setDefaultHandler(handler))
     }
 
-    override fun GetNodes(project: String, handler: ArrayResponseHandler<Node>){
+    override fun GetNodes(project: String, handler: ArrayResponseHandler<NodeDto>){
         api.getAllNodes(project).enqueue(ApiManager.setArrayDefaultHandler(handler))
     }
 

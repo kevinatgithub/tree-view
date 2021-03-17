@@ -2,22 +2,21 @@ package app.kevs.treeview
 
 import android.app.Activity
 import android.util.DisplayMetrics
-import app.kevs.treeview.network.models.Node
+import app.kevs.treeview.network.models.NodeDto
 import com.google.gson.Gson
 import de.blox.treeview.TreeNode
 import de.blox.treeview.TreeView
 import java.lang.Exception
-import java.util.*
 import kotlin.collections.ArrayList
 
-class TreeViewHelper(ctx : Activity, treeView: TreeView, nodeClick : NodeOnClick, nodes: List<Node>)  {
+class TreeViewHelper(ctx : Activity, treeView: TreeView, nodeClick : NodeOnClick, nodeDtos: List<NodeDto>)  {
 
     val gson = Gson()
     val treeView : TreeView = treeView
     var renderer : Renderer? = null
     private val ctx : Activity = ctx
     private val nodeClick : NodeOnClick = nodeClick
-    private val nodes = nodes
+    private val nodes = nodeDtos
     private var resized = false
 
     public fun renderTree() {
@@ -44,7 +43,7 @@ class TreeViewHelper(ctx : Activity, treeView: TreeView, nodeClick : NodeOnClick
     }
 
     private fun parseNodes() : TreeNode? {
-        var collection = ArrayList<Pair<Node, TreeNode>>()
+        var collection = ArrayList<Pair<NodeDto, TreeNode>>()
         nodes.forEach {
             var treeNode = TreeNode(it)
             collection.add(Pair(it, treeNode))
@@ -68,8 +67,8 @@ class TreeViewHelper(ctx : Activity, treeView: TreeView, nodeClick : NodeOnClick
             }
         }
 
-        if (MainActivity.tempRootNode != null) {
-            val node = MainActivity.tempRootNode
+        if (MainActivity.tempRootNodeDto != null) {
+            val node = MainActivity.tempRootNodeDto
             val root = collection.find { p -> p.first.NodeName.equals(node!!.NodeName) && p.first.Path.equals(node!!.Path) && p.first.ProjectName.equals(node!!.ProjectName) }
             if (root != null)
                 return root.second

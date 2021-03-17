@@ -1,33 +1,31 @@
 package app.kevs.treeview
 
 import android.content.Intent
-import android.media.Image
 import android.os.Bundle
 import android.view.View
 import android.widget.ImageView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
-import app.kevs.treeview.network.models.Node
+import app.kevs.treeview.network.models.NodeDto
 import app.kevs.treeview.repository.*
 import app.kevs.treeview.services.NodesServices
 import com.bakhtiyor.gradients.Gradients
 import com.cesarferreira.pluralize.singularize
-import com.google.gson.Gson
 import com.imu.flowerdelivery.network.callbacks.ArrayResponseHandler
 import com.imu.flowerdelivery.network.callbacks.ObjectResponseHandler
 import com.imu.flowerdelivery.network.models.ResponseObject
 import de.blox.treeview.TreeView
 
 
-class MainActivity : AppCompatActivity(), NodeOnClick, ArrayResponseHandler<Node>,
-    ObjectResponseHandler<Node> {
+class MainActivity : AppCompatActivity(), NodeOnClick, ArrayResponseHandler<NodeDto>,
+    ObjectResponseHandler<NodeDto> {
 
     companion object{
         var user = ""
         var projectName = ""
-        var nodes: List<Node>? = null
-        var tempRootNode: Node? = null
+        var nodeDtos: List<NodeDto>? = null
+        var tempRootNodeDto: NodeDto? = null
     }
 
     var repo : NodeApiRepository? = null
@@ -54,7 +52,7 @@ class MainActivity : AppCompatActivity(), NodeOnClick, ArrayResponseHandler<Node
 
         zoomOutNodeButton = findViewById<ImageView>(R.id.btnZoomOut)
         zoomOutNodeButton!!.setOnClickListener {
-            tempRootNode = null
+            tempRootNodeDto = null
             repo!!.GetNodes(projectName, this)
             toggleZoomNodeButton()
         }
@@ -69,16 +67,16 @@ class MainActivity : AppCompatActivity(), NodeOnClick, ArrayResponseHandler<Node
     }
 
     private fun toggleZoomNodeButton(){
-        if (tempRootNode == null)
+        if (tempRootNodeDto == null)
             zoomOutNodeButton!!.visibility = View.GONE
         else
             zoomOutNodeButton!!.visibility = View.VISIBLE
     }
 
     override fun onClick(data: Object, position: Int) {
-        val parentNode = data as Node
+        val parentNode = data as NodeDto
 
-        val callback1 = NodesServices.PromptNodeNameCallback { nodeName: String, type: String ->
+        val callback1 = NodesServices.PromptNodeNameCallback { nodeName: String, externalProjectName : String, type: String, refType: String ->
             val path = parentNode.Path+"."+parentNode.NodeName
             when (type){
                 Constants.NODE_TYPE_MVC -> {
@@ -116,7 +114,7 @@ class MainActivity : AppCompatActivity(), NodeOnClick, ArrayResponseHandler<Node
         }
 
         var callback2 = NodesServices.NodeZoomCallback {
-            tempRootNode = parentNode
+            tempRootNodeDto = parentNode
             //repo!!.GetNodes(projectName, this)
             tvHelper!!.renderTree()
             toggleZoomNodeButton()
@@ -126,7 +124,7 @@ class MainActivity : AppCompatActivity(), NodeOnClick, ArrayResponseHandler<Node
     }
 
     override fun onLongClick(data: Object, position: Int): Boolean {
-        val parentNode = data as Node
+        val parentNode = data as NodeDto
         val callback2 = NodesServices.NodeDeleteCallback{
             repo!!.RemoveNode(parentNode.NodeName!!, parentNode.Path!!, this)
         }
@@ -134,20 +132,20 @@ class MainActivity : AppCompatActivity(), NodeOnClick, ArrayResponseHandler<Node
         return true
     }
 
-    override fun onSuccess(collection: Array<Node>) {
+    override fun onSuccess(collection: Array<NodeDto>) {
         if (collection.size == 0){
             var projectNameArray = projectName.split(Constants.PROJECT_DELIMITER)
             repo!!.AddNode(projectNameArray.last(), projectName, this)
             return
         }
-        nodes = collection.asList()
+        nodeDtos = collection.asList()
 
-        if (nodes == null)
+        if (nodeDtos == null)
             return
 
         val treeView : TreeView = findViewById(R.id.idTreeView)
 
-        tvHelper = TreeViewHelper(this, treeView, this, nodes!!)
+        tvHelper = TreeViewHelper(this, treeView, this, nodeDtos!!)
         treeView.visibility = View.VISIBLE
         tvHelper!!.renderTree()
     }
@@ -156,7 +154,7 @@ class MainActivity : AppCompatActivity(), NodeOnClick, ArrayResponseHandler<Node
         Toast.makeText(this, "$error", Toast.LENGTH_SHORT).show()
     }
 
-    override fun onSuccess(obj: ResponseObject<Node>) {
+    override fun onSuccess(obj: ResponseObject<NodeDto>) {
         repo!!.GetNodes(projectName, this)
     }
 }

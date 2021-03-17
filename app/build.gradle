@@ -51,4 +51,6 @@ dependencies {
     implementation 'com.squareup.retrofit2:converter-gson:2.0.0'
     implementation 'com.github.cesarferreira:kotlin-pluralizer:1.0.0'
     implementation 'com.bakhtiyor.gradients:gradients:0.1.0'
+    implementation 'de.blox:graphview:0.7.1'
+    implementation 'co.trikita:anvil-sdk15:0.5.0'
 }

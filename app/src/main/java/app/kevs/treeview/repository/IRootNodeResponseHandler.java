@@ -1,7 +1,7 @@
 package app.kevs.treeview.repository;
 
-import app.kevs.treeview.network.models.Node;
+import app.kevs.treeview.network.models.NodeDto;
 
 public interface IRootNodeResponseHandler {
-    void handleNodeArray(Node[] collection);
+    void handleNodeArray(NodeDto[] collection);
 }

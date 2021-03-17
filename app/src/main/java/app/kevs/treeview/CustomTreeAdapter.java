@@ -1,15 +1,11 @@
 package app.kevs.treeview;
 import android.content.Context;
-import android.graphics.Color;
 import android.view.View;
 
 import androidx.annotation.NonNull;
 
-import com.google.gson.Gson;
-
-import app.kevs.treeview.network.models.Node;
+import app.kevs.treeview.network.models.NodeDto;
 import de.blox.treeview.BaseTreeAdapter;
-import de.blox.treeview.TreeNode;
 
 
 public class CustomTreeAdapter extends BaseTreeAdapter<ViewHolder> {
@@ -31,19 +27,19 @@ public class CustomTreeAdapter extends BaseTreeAdapter<ViewHolder> {
 
     @Override
     public void onBindViewHolder(ViewHolder viewHolder, Object data, int position) {
-        Node node = (Node) data;
+        NodeDto nodeDto = (NodeDto) data;
 
-        viewHolder.textView.setText(node.getNodeName());
+        viewHolder.textView.setText(nodeDto.getNodeName());
         viewHolder.container.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                nodeOnClick.onClick(node, position);
+                nodeOnClick.onClick(nodeDto, position);
             }
         });
         viewHolder.container.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
-                return nodeOnClick.onLongClick(node, position);
+                return nodeOnClick.onLongClick(nodeDto, position);
             }
         });
     }

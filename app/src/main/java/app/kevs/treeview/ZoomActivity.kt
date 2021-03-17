@@ -23,7 +23,7 @@ class ZoomActivity : AppCompatActivity(), NodeOnClick {
 
         findViewById<ConstraintLayout>(R.id.container).background = Gradients.premiumDark()
 
-        tvHelper = TreeViewHelper(this, findViewById<TreeView>(R.id.idTreeView), this, MainActivity.nodes!!)
+        tvHelper = TreeViewHelper(this, findViewById<TreeView>(R.id.idTreeView), this, MainActivity.nodeDtos!!)
 
         tvHelper!!.renderTree()
 

@@ -14,7 +14,7 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import app.kevs.treeview.network.models.Node
+import app.kevs.treeview.network.models.NodeDto
 import app.kevs.treeview.network.models.Project
 import com.bakhtiyor.gradients.Gradients
 import com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -26,9 +26,12 @@ import com.imu.flowerdelivery.network.models.ResponseObject
 
 class ProjectsActivity : AppCompatActivity(), ArrayResponseHandler<Project>,
     ObjectResponseHandler<Project> {
+    companion object{
+        var user : String? = null
+        var projects = ArrayList<Project>()
+        var api : TreeApi? = null
+    }
     var rvProjects : RecyclerView? = null
-    var api : TreeApi? = null
-    var user : String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,7 +42,7 @@ class ProjectsActivity : AppCompatActivity(), ArrayResponseHandler<Project>,
         }
         supportActionBar?.hide()
 
-        MainActivity.tempRootNode = null
+        MainActivity.tempRootNodeDto = null
 
         findViewById<ConstraintLayout>(R.id.container).background = Gradients.premiumDark()
 
@@ -54,8 +57,11 @@ class ProjectsActivity : AppCompatActivity(), ArrayResponseHandler<Project>,
 
         user = intent.getStringExtra("user").toString()
 
-        api!!.getProjectsForUser(user!!).enqueue(ApiManager.setArrayDefaultHandler(this))
+        refreshProjects()
+    }
 
+    private fun refreshProjects(){
+        api!!.getProjectsForUser(user!!).enqueue(ApiManager.setArrayDefaultHandler(this))
     }
 
     private fun showCreateProjectDialog(){
@@ -96,9 +102,23 @@ class ProjectsActivity : AppCompatActivity(), ArrayResponseHandler<Project>,
 
     private fun createProject(projectName: String, type: String) {
         api!!.addProject(Project(projectName, user!!,type)).enqueue(ApiManager.setDefaultHandler(this))
+        val newProjectName = user + Constants.PROJECT_DELIMITER + projectName
+        api!!.addNode(NodeDto(newProjectName, projectName, newProjectName)).enqueue(ApiManager.setDefaultHandler(NullApiRequestHandler()))
+        val childPath = newProjectName+Constants.PATH_DELIMITER+projectName
+        when(type){
+            Constants.PROJECT_TYPE_MVC -> {
+                api!!.addNode(NodeDto(newProjectName, "Controllers", childPath)).enqueue(ApiManager.setDefaultHandler(NullApiRequestHandler()))
+                api!!.addNode(NodeDto(newProjectName, "Models", childPath)).enqueue(ApiManager.setDefaultHandler(NullApiRequestHandler()))
+                api!!.addNode(NodeDto(newProjectName, "Views", childPath)).enqueue(ApiManager.setDefaultHandler(NullApiRequestHandler()))
+            }
+            Constants.PROJECT_TYPE_MODEL_CLASS -> {
+                api!!.addNode(NodeDto(newProjectName, "Id", childPath)).enqueue(ApiManager.setDefaultHandler(NullApiRequestHandler()))
+            }
+        }
     }
 
     override fun onSuccess(collection: Array<Project>) {
+        projects =  collection.toCollection(ArrayList())
         val adapter = ProjectsAdapter(this, collection.toList(), ProjectClick(this, api!!))
         rvProjects!!.adapter = adapter
         var divider = DividerItemDecoration(rvProjects!!.getContext(), DividerItemDecoration.VERTICAL)
@@ -144,12 +164,12 @@ class ProjectsActivity : AppCompatActivity(), ArrayResponseHandler<Project>,
     }
 
     class ProjectClick(ctx: Context, api: TreeApi) : ProjectClickHandler,
-        ArrayResponseHandler<Node> {
+        ArrayResponseHandler<NodeDto> {
         val ctx = ctx
         val api = api
 
         override fun onProjectClick(project: Project) {
-            val intent = Intent(ctx, MainActivity::class.java)
+            val intent = Intent(ctx, GraphViewActivity::class.java)
             intent.putExtra("project", project.Key)
             ctx.startActivity(intent)
         }
@@ -169,11 +189,11 @@ class ProjectsActivity : AppCompatActivity(), ArrayResponseHandler<Project>,
 
         private fun deleteProject(project: Project) {
             val activity = ctx as ProjectsActivity
-            activity.api!!.deleteProject(project).enqueue(ApiManager.setDefaultHandler(activity))
-            activity.api!!.deleteNodesInProject(project.Name).enqueue(ApiManager.setArrayDefaultHandler(this))
+            api!!.deleteProject(project).enqueue(ApiManager.setDefaultHandler(activity))
+            api!!.deleteNodesInProject(user!! + Constants.PROJECT_DELIMITER + project.Name).enqueue(ApiManager.setArrayDefaultHandler(this))
         }
 
-        override fun onSuccess(collection: Array<Node>) {
+        override fun onSuccess(collection: Array<NodeDto>) {
 
         }
 
