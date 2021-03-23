@@ -1,9 +1,6 @@
 package com.imu.flowerdelivery.network.interfaces
 
-import app.kevs.treeview.network.models.LoginModel
-import app.kevs.treeview.network.models.NodeDto
-import app.kevs.treeview.network.models.Project
-import app.kevs.treeview.network.models.User
+import app.kevs.treeview.network.models.*
 import com.imu.flowerdelivery.network.models.*
 import retrofit2.Call
 import retrofit2.http.*
@@ -13,6 +10,8 @@ interface TreeApi {
     @GET("nodes/{project}")
     fun getAllNodes(@Path("project") project: String): Call<Array<NodeDto>>
 
+    @GET("nodesbyuser/{user}")
+    fun getAllNodesByUser(@Path("user") user: String): Call<Array<NodeDto>>
 
     @GET("projects/{user}")
     fun getProjectsForUser(@Path("user") user:String): Call<Array<Project>>
@@ -27,6 +26,9 @@ interface TreeApi {
     /** POST **/
     @POST("nodes")
     fun addNode(@Body nodeDto: NodeDto): Call<ResponseObject<NodeDto>>
+
+    @POST("nodesupdate")
+    fun updateNode(@Body updateDto: NodeUpdateDto): Call<ResponseObject<NodeDto>>
 
     @POST("nodesdelete")
     fun deleteNode(@Body nodeDto: NodeDto): Call<ResponseObject<NodeDto>>

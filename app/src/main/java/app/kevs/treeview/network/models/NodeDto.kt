@@ -1,21 +1,31 @@
 package app.kevs.treeview.network.models
 
+import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 
-public class NodeDto{
+class NodeDto(
+        @SerializedName("project") var ProjectName: String?,
+        @SerializedName("nodeName") var NodeName: String?,
+        @SerializedName("path") var Path: String?,
+        @SerializedName("type") var Type: String? = null,
+        @SerializedName("links") var Links: Array<NodeDto>? = null){
 
-    constructor(ProjectName: String?, NodeName: String?, Path: String?) {
-        this.ProjectName = ProjectName
-        this.NodeName = NodeName
-        this.Path = Path
+    fun Clone() : NodeDto{
+        return Gson().fromJson(Gson().toJson(this), NodeDto::class.java)
     }
 
-    @SerializedName("project")
-    public var ProjectName : String? = null
+    fun AddLink(newLink : NodeDto){
+        val links = this.Links
+        var linksCollection = if (links == null) ArrayList<NodeDto>() else links.toCollection(ArrayList())
+        linksCollection.add(newLink)
+        this.Links = linksCollection.toTypedArray()
+    }
 
-    @SerializedName("nodeName")
-    public var NodeName : String? = null
-
-    @SerializedName("path")
-    public var Path : String? = null
+    fun RemoveLink(link : NodeDto){
+        val links = this.Links
+        var linksCollection = if (links == null) ArrayList<NodeDto>() else links.toCollection(ArrayList())
+        val toRemove = linksCollection.find { it.NodeName.equals(link.NodeName) && it.Path.equals(link.Path) }
+        linksCollection.remove(toRemove)
+        this.Links = linksCollection.toTypedArray()
+    }
 }

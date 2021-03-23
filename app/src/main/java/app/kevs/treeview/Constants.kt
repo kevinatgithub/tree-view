@@ -2,28 +2,47 @@ package app.kevs.treeview
 
 class Constants{
     companion object{
-        val PATH_DELIMITER = "."
-        val PROJECT_DELIMITER = "-"
+        const val MIGRATION_FUNCTION_APP_CODE = "Jn4sL0SdojnzpulQJ//w4zh5zQkX2oSbsTlHC4xI9klH8I788EMrEg=="
 
-        val NODE_TYPE_OTHER = ""
-        val NODE_TYPE_ADD_REFERENCE = "Add Reference"
-        val NODE_TYPE_MVC = "Model View Controller"
-        val NODE_TYPE_SUB_PROJECT = "Strategy"
-        val NODE_TYPE_IMPLEMENTATION = "Implementation Class"
-        val NODE_TYPE_INTERFACE = "Interface Class"
-        val NODE_TYPE_CONTROLLER = "Controller"
-        val NODE_TYPE_MODEL = "Model"
-        val NODE_TYPE_VIEW = "View"
-        val NODE_TYPE_CRUD = "CRUD"
-        val NODE_TYPE_DEPENDENCY_MODEL = "Model Dependency"
-        val NODE_TYPE_DEPENDENCY_REPOSITORY = "Repository Dependency"
-        val NODE_TYPE_DEPENDENCY_SERVICE = "Service Dependency"
+        const val PATH_DELIMITER = "."
+        const val PROJECT_DELIMITER = "-"
 
-        val PROJECT_TYPE_BLANK = ""
-        val PROJECT_TYPE_MVC = "Model View Controller"
-        val PROJECT_TYPE_MODEL_CLASS = "Model Class"
+        const val NODE_TYPE_ROOT = "Root"
+        const val NODE_TYPE_OTHER = "New Node"
+        const val NODE_TYPE_ADD_REFERENCE = "Add Reference"
+        const val NODE_TYPE_ADD_NEW_PROJECT_REFERENCE = "Add New Project Reference"
+        const val NODE_TYPE_MVC = "Model View Controller"
+        const val NODE_TYPE_SUB_PROJECT = "Strategy Branch"
+        const val NODE_TYPE_IMPLEMENTATION = "Implementation Class"
+        const val NODE_TYPE_INTERFACE = "Interface Class"
+        const val NODE_TYPE_CONTROLLER = "Controller"
+        const val NODE_TYPE_MODEL = "Model"
+        const val NODE_TYPE_VIEW = "View"
+        const val NODE_TYPE_CRUD = "CRUD"
+        const val NODE_TYPE_LINK = "Link to Node"
 
-        val REFERENCE_TYPE_BLANK = "Blank"
-        val REFERENCE_TYPE_Strategy = "Strategy"
+        const val PROJECT_TYPE_BLANK = "New Project"
+        const val PROJECT_TYPE_MVC = "Model View Controller"
+        const val PROJECT_TYPE_MODEL_CLASS = "Model Class"
+
+        const val REFERENCE_TYPE_BLANK = "Select Template"
+        const val REFERENCE_TYPE_MVC = "MVC"
+        const val REFERENCE_TYPE_STRATEGY = "Strategy"
+        const val REFERENCE_TYPE_CONTROLLER = "Controller"
+        const val REFERENCE_TYPE_MODEL = "Model"
+
+        const val NODE_TYPE_CONTAINER_CONTROLLER = "Controllers Container"
+        const val NODE_TYPE_CONTAINER_MODEL = "Models Container"
+        const val NODE_TYPE_CONTAINER_VIEW = "Views Container"
+        const val NODE_TYPE_CONTAINER_IMPLEMENTATION = "Implementations Container"
+        const val NODE_TYPE_CONTAINER_INTERFACES = "Interfaces Container"
+        const val NODE_TYPE_CONTAINER_METHODS = "Methods Container"
+        const val NODE_TYPE_CONTAINER_DEPENDENCIES = "Dependencies Container"
+        const val NODE_TYPE_CONTAINER_STRATEGY = "Strategy Container"
+        const val NODE_TYPE_CONTAINER_ENDPOINTS = "Endpoints Container"
+
+        const val CONFIG_BASE_URL_KEY = "base_url"
+
+        const val SESSION_KEY_USER = "user"
     }
 }

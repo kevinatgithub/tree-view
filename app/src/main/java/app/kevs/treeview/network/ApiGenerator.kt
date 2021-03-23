@@ -2,6 +2,8 @@ package com.imu.flowerdelivery.network
 
 import android.content.Context
 import android.text.TextUtils
+import app.kevs.treeview.Constants
+import app.kevs.treeview.helpers.Prefs
 import com.imu.flowerdelivery.network.interceptors.AuthenticationInterceptor
 import com.imu.flowerdelivery.network.interceptors.ServerConnectionInterceptor
 import com.imu.flowerdelivery.network.interceptors.TokenAuthenticationInterceptor
@@ -13,14 +15,22 @@ import retrofit2.converter.gson.GsonConverterFactory
 class ApiGenerator {
     companion object {
 
-        private val APP_BASE_URL: String = "https://tree-api.getsandbox.com/"
+        var APP_BASE_URL: String = Prefs.getString(Constants.CONFIG_BASE_URL_KEY, "https://tree-api.getsandbox.com/")!!
         private val httpClient = OkHttpClient.Builder()
 
-        private val builder: Retrofit.Builder = Retrofit.Builder()
+        private var builder: Retrofit.Builder = Retrofit.Builder()
                 .baseUrl(APP_BASE_URL)
                 .addConverterFactory(GsonConverterFactory.create())
 
         private var retrofit: Retrofit = builder.build()
+
+        fun applyNewBaseUrl(){
+            builder = Retrofit.Builder()
+            .baseUrl(APP_BASE_URL)
+                .addConverterFactory(GsonConverterFactory.create())
+
+            retrofit = builder.build()
+        }
 
         fun <S> createService(
             serviceClass: Class<S>,

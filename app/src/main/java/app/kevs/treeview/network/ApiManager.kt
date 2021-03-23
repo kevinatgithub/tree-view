@@ -1,6 +1,9 @@
 package com.imu.flowerdelivery.network
 
 import android.content.Context
+import app.kevs.treeview.network.ConfigApiGenerator
+import app.kevs.treeview.network.interfaces.MigrateApi
+import app.kevs.treeview.network.interfaces.TreeConfigApi
 import com.imu.flowerdelivery.network.callbacks.ArrayResponseHandler
 import com.imu.flowerdelivery.network.callbacks.ObjectResponseHandler
 import com.imu.flowerdelivery.network.interfaces.TreeApi
@@ -20,6 +23,14 @@ class ApiManager private  constructor(){
 
         fun getInstance(context: Context): TreeApi {
             return ApiGenerator.createService(TreeApi::class.java, context)
+        }
+
+        fun getConfigInstance(): TreeConfigApi {
+            return ConfigApiGenerator.createServiceConfigApi(TreeConfigApi::class.java)
+        }
+
+        fun getMigrateInstance(): MigrateApi {
+            return ConfigApiGenerator.createServiceMigrateApi(MigrateApi::class.java)
         }
 
         fun  <T>setArrayDefaultHandler(callback: ArrayResponseHandler<T>) : Callback<Array<T>> {

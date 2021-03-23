@@ -14,6 +14,10 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import app.kevs.treeview.Constants.Companion.SESSION_KEY_USER
+import app.kevs.treeview.helpers.NullApiRequestHandler
+import app.kevs.treeview.helpers.Prefs
+import app.kevs.treeview.helpers.remove
 import app.kevs.treeview.network.models.NodeDto
 import app.kevs.treeview.network.models.Project
 import com.bakhtiyor.gradients.Gradients
@@ -31,18 +35,13 @@ class ProjectsActivity : AppCompatActivity(), ArrayResponseHandler<Project>,
         var projects = ArrayList<Project>()
         var api : TreeApi? = null
     }
-    var rvProjects : RecyclerView? = null
+    private var rvProjects : RecyclerView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_projects)
 
-        window.decorView.apply {
-            systemUiVisibility = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION and View.SYSTEM_UI_FLAG_FULLSCREEN
-        }
         supportActionBar?.hide()
-
-        MainActivity.tempRootNodeDto = null
 
         findViewById<ConstraintLayout>(R.id.container).background = Gradients.premiumDark()
 
@@ -55,9 +54,31 @@ class ProjectsActivity : AppCompatActivity(), ArrayResponseHandler<Project>,
             showCreateProjectDialog()
         }
 
+        findViewById<FloatingActionButton>(R.id.fabLogout).setOnClickListener {
+            attemptLogout()
+        }
+
         user = intent.getStringExtra("user").toString()
 
         refreshProjects()
+    }
+
+    override fun onBackPressed() {
+        attemptLogout()
+        return
+        //super.onBackPressed()
+    }
+
+    private fun attemptLogout() {
+        AlertDialog.Builder(this)
+                .setTitle("Are you sure you want to log out?")
+                .setPositiveButton("Yes") { _, _ ->
+                    Prefs.remove(SESSION_KEY_USER)
+                    startActivity(Intent(this@ProjectsActivity, LoginActivity::class.java))
+                    finish()
+                }
+            .setNegativeButton("Cancel") { dialog, _ -> dialog.cancel() }
+            .show()
     }
 
     private fun refreshProjects(){
@@ -78,13 +99,13 @@ class ProjectsActivity : AppCompatActivity(), ArrayResponseHandler<Project>,
         input.inputType = InputType.TYPE_CLASS_TEXT
         layout.addView(input)
 
-        var spinnerItems = ArrayList<String>()
+        val spinnerItems = ArrayList<String>()
         spinnerItems.add(Constants.PROJECT_TYPE_BLANK)
         spinnerItems.add(Constants.PROJECT_TYPE_MVC)
         spinnerItems.add(Constants.PROJECT_TYPE_MODEL_CLASS)
 
         val spinner = Spinner(this)
-        val spinnerArrayAdapter: ArrayAdapter<String> = ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,spinnerItems)
+        val spinnerArrayAdapter: ArrayAdapter<String> = ArrayAdapter(this,android.R.layout.simple_spinner_dropdown_item,spinnerItems)
         spinner.adapter = spinnerArrayAdapter
         layout.addView(spinner)
 
@@ -92,10 +113,10 @@ class ProjectsActivity : AppCompatActivity(), ArrayResponseHandler<Project>,
 
         builder.setPositiveButton(
             "OK"
-        ) { dialog, which -> createProject(input.text.toString(), spinner.selectedItem.toString()) }
+        ) { _, _ -> createProject(input.text.toString(), spinner.selectedItem.toString()) }
         builder.setNegativeButton(
             "Cancel"
-        ) { dialog, which -> dialog.cancel() }
+        ) { dialog, _ -> dialog.cancel() }
 
         builder.show()
     }
@@ -121,7 +142,7 @@ class ProjectsActivity : AppCompatActivity(), ArrayResponseHandler<Project>,
         projects =  collection.toCollection(ArrayList())
         val adapter = ProjectsAdapter(this, collection.toList(), ProjectClick(this, api!!))
         rvProjects!!.adapter = adapter
-        var divider = DividerItemDecoration(rvProjects!!.getContext(), DividerItemDecoration.VERTICAL)
+        val divider = DividerItemDecoration(rvProjects!!.context, DividerItemDecoration.VERTICAL)
         rvProjects!!.addItemDecoration(divider)
     }
 
@@ -129,10 +150,10 @@ class ProjectsActivity : AppCompatActivity(), ArrayResponseHandler<Project>,
         Toast.makeText(this,error, Toast.LENGTH_LONG).show()
     }
 
-    class ProjectsAdapter(ctx: Context, projects: List<Project>, handler: ProjectClickHandler) : RecyclerView.Adapter<ProjectsViewHolder>(){
-        val ctx = ctx
-        val projects = projects
-        val handler = handler
+    class ProjectsAdapter(
+        private val ctx: Context, private val projects: List<Project>,
+        private val handler: ProjectClickHandler
+    ) : RecyclerView.Adapter<ProjectsViewHolder>(){
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ProjectsViewHolder {
             val view : View = LayoutInflater.from(ctx).inflate(R.layout.item_projects, parent, false)
@@ -144,8 +165,8 @@ class ProjectsActivity : AppCompatActivity(), ArrayResponseHandler<Project>,
         }
 
         override fun onBindViewHolder(holder: ProjectsViewHolder, position: Int) {
-            val project = projects.get(position)
-            holder.projectName.setText(project.Name)
+            val project = projects[position]
+            holder.projectName.text = project.Name
             holder.container.setOnClickListener { handler.onProjectClick(project) }
             holder.container.setOnLongClickListener { handler.onProjectLongClick(project) }
         }
@@ -163,14 +184,13 @@ class ProjectsActivity : AppCompatActivity(), ArrayResponseHandler<Project>,
         fun onProjectLongClick(project: Project) : Boolean
     }
 
-    class ProjectClick(ctx: Context, api: TreeApi) : ProjectClickHandler,
+    class ProjectClick(private val ctx: Context, private val api: TreeApi) : ProjectClickHandler,
         ArrayResponseHandler<NodeDto> {
-        val ctx = ctx
-        val api = api
 
         override fun onProjectClick(project: Project) {
             val intent = Intent(ctx, GraphViewActivity::class.java)
             intent.putExtra("project", project.Key)
+            intent.putExtra("user", user)
             ctx.startActivity(intent)
         }
 
@@ -179,18 +199,18 @@ class ProjectsActivity : AppCompatActivity(), ArrayResponseHandler<Project>,
             builder.setTitle("Delete Project")
             builder.setPositiveButton(
                 "Yes"
-            ) { dialog, which -> deleteProject(project) }
+            ) { _, _ -> deleteProject(project) }
             builder.setNegativeButton(
                 "Cancel"
-            ) { dialog, which -> dialog.cancel() }
+            ) { dialog, _ -> dialog.cancel() }
             builder.show()
             return true
         }
 
         private fun deleteProject(project: Project) {
             val activity = ctx as ProjectsActivity
-            api!!.deleteProject(project).enqueue(ApiManager.setDefaultHandler(activity))
-            api!!.deleteNodesInProject(user!! + Constants.PROJECT_DELIMITER + project.Name).enqueue(ApiManager.setArrayDefaultHandler(this))
+            api.deleteProject(project).enqueue(ApiManager.setDefaultHandler(activity))
+            api.deleteNodesInProject(user!! + Constants.PROJECT_DELIMITER + project.Name).enqueue(ApiManager.setArrayDefaultHandler(this))
         }
 
         override fun onSuccess(collection: Array<NodeDto>) {

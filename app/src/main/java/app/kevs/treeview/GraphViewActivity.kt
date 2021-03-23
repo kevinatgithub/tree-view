@@ -9,14 +9,40 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.content.ContextCompat
+import app.kevs.treeview.Constants.Companion.NODE_TYPE_ADD_NEW_PROJECT_REFERENCE
 import app.kevs.treeview.Constants.Companion.NODE_TYPE_ADD_REFERENCE
+import app.kevs.treeview.Constants.Companion.NODE_TYPE_CONTAINER_CONTROLLER
+import app.kevs.treeview.Constants.Companion.NODE_TYPE_CONTAINER_DEPENDENCIES
+import app.kevs.treeview.Constants.Companion.NODE_TYPE_CONTAINER_ENDPOINTS
+import app.kevs.treeview.Constants.Companion.NODE_TYPE_CONTAINER_IMPLEMENTATION
+import app.kevs.treeview.Constants.Companion.NODE_TYPE_CONTAINER_INTERFACES
+import app.kevs.treeview.Constants.Companion.NODE_TYPE_CONTAINER_METHODS
+import app.kevs.treeview.Constants.Companion.NODE_TYPE_CONTAINER_MODEL
+import app.kevs.treeview.Constants.Companion.NODE_TYPE_CONTAINER_STRATEGY
+import app.kevs.treeview.Constants.Companion.NODE_TYPE_CONTAINER_VIEW
+import app.kevs.treeview.Constants.Companion.NODE_TYPE_CONTROLLER
+import app.kevs.treeview.Constants.Companion.NODE_TYPE_CRUD
+import app.kevs.treeview.Constants.Companion.NODE_TYPE_IMPLEMENTATION
+import app.kevs.treeview.Constants.Companion.NODE_TYPE_INTERFACE
+import app.kevs.treeview.Constants.Companion.NODE_TYPE_LINK
+import app.kevs.treeview.Constants.Companion.NODE_TYPE_MODEL
+import app.kevs.treeview.Constants.Companion.NODE_TYPE_MVC
+import app.kevs.treeview.Constants.Companion.NODE_TYPE_ROOT
+import app.kevs.treeview.Constants.Companion.NODE_TYPE_SUB_PROJECT
+import app.kevs.treeview.Constants.Companion.NODE_TYPE_VIEW
 import app.kevs.treeview.Constants.Companion.PATH_DELIMITER
 import app.kevs.treeview.Constants.Companion.PROJECT_DELIMITER
-import app.kevs.treeview.Constants.Companion.REFERENCE_TYPE_Strategy
+import app.kevs.treeview.Constants.Companion.REFERENCE_TYPE_CONTROLLER
+import app.kevs.treeview.Constants.Companion.REFERENCE_TYPE_MODEL
+import app.kevs.treeview.Constants.Companion.REFERENCE_TYPE_MVC
+import app.kevs.treeview.Constants.Companion.REFERENCE_TYPE_STRATEGY
+import app.kevs.treeview.helpers.DependencySelector
+import app.kevs.treeview.helpers.NodeOnClick
+import app.kevs.treeview.helpers.NodesServices
+import app.kevs.treeview.helpers.NullApiRequestHandler
 import app.kevs.treeview.network.models.NodeDto
-import app.kevs.treeview.network.models.Project
-import app.kevs.treeview.repository.NodeApiRepository
-import app.kevs.treeview.services.NodesServices
+import app.kevs.treeview.network.models.NodeUpdateDto
 import com.bakhtiyor.gradients.Gradients
 import com.cesarferreira.pluralize.pluralize
 import com.cesarferreira.pluralize.singularize
@@ -36,6 +62,8 @@ import de.blox.graphview.layered.SugiyamaAlgorithm
 import de.blox.graphview.layered.SugiyamaConfiguration
 import de.blox.graphview.tree.BuchheimWalkerAlgorithm
 import de.blox.graphview.tree.BuchheimWalkerConfiguration
+import java.util.*
+import kotlin.collections.ArrayList
 
 
 class GraphViewActivity : AppCompatActivity(), NodeOnClick, ArrayResponseHandler<NodeDto>,
@@ -46,21 +74,16 @@ class GraphViewActivity : AppCompatActivity(), NodeOnClick, ArrayResponseHandler
     private var user = ""
     var projectName = ""
     var nodes = ArrayList<Node>()
-    private var repo : NodeApiRepository? = null
     var api : TreeApi? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        requestWindowFeature(Window.FEATURE_NO_TITLE);
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-            WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        requestWindowFeature(Window.FEATURE_NO_TITLE)
+        //getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.activity_graph_view)
 
         api = ApiManager.getInstance(this)
 
-        window.decorView.apply {
-            systemUiVisibility = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION and View.SYSTEM_UI_FLAG_FULLSCREEN
-        }
         supportActionBar?.hide()
 
         user = intent.getStringExtra("user").toString()
@@ -70,24 +93,22 @@ class GraphViewActivity : AppCompatActivity(), NodeOnClick, ArrayResponseHandler
         findViewById<ImageView>(R.id.btnChangeGraphType).setOnClickListener {
             changeGraphType()
         }
-
-        repo = NodeApiRepository(this, projectName)
-        repo!!.GetNodes(projectName, this)
+        api!!.getAllNodes(projectName).enqueue(setArrayDefaultHandler(this))
     }
 
     private fun changeGraphType() {
         when(graphType){
             1 -> {
-                parseNodesData()
                 graphType = 2
+                parseNodesData()
             }
             2 -> {
-                parseNodesData()
                 graphType = 1
+                parseNodesData()
             }
             3 -> {
-                parseNodesData()
                 graphType = 1
+                parseNodesData()
             }
         }
     }
@@ -98,7 +119,7 @@ class GraphViewActivity : AppCompatActivity(), NodeOnClick, ArrayResponseHandler
 
         val graph = Graph()
 
-        nodes = ArrayList<Node>()
+        nodes = ArrayList()
         nodesData.forEach {
             val node = Node(it)
             nodes.add(node)
@@ -112,10 +133,10 @@ class GraphViewActivity : AppCompatActivity(), NodeOnClick, ArrayResponseHandler
 
                 val parentNode = nodes.find { n ->
                     val parentNode = n.data as NodeDto
-                    var pathArray = childNode.Path!!.split(Constants.PATH_DELIMITER)
-                    var parentName = pathArray.get(pathArray.size - 1)
+                    var pathArray = childNode.Path!!.split(PATH_DELIMITER)
+                    val parentName = pathArray[pathArray.size - 1]
                     pathArray = pathArray.subList(0, pathArray.size - 1)
-                    val newPath = pathArray.joinToString(Constants.PATH_DELIMITER)
+                    val newPath = pathArray.joinToString(PATH_DELIMITER)
                     parentNode.Path.equals(newPath) && parentNode.NodeName.equals(parentName) && parentNode.ProjectName.equals(childNode.ProjectName)
                 }
 
@@ -124,10 +145,26 @@ class GraphViewActivity : AppCompatActivity(), NodeOnClick, ArrayResponseHandler
             }
         }
 
-        var adapter = object : GraphAdapter<GraphView.ViewHolder>(graph) {
+        nodes.forEach {
+            val owner = it
+            val childNode = it.data as NodeDto
+            if (childNode.Links != null) {
+                childNode.Links!!.forEach { it1 ->
+                    val linkedNode = nodes.find { it2 ->
+                        val toLinkNodeData = it2.data as NodeDto
+                        toLinkNodeData.NodeName.equals(it1.NodeName) && toLinkNodeData.Path.equals(
+                            it1.Path)
+                    }
+                    if (linkedNode != null)
+                        graph.addEdge(owner, linkedNode)
+                }
+            }
+        }
+
+        val adapter = object : GraphAdapter<GraphView.ViewHolder>(graph) {
             override fun getCount(): Int = nodes.size
 
-            override fun getItem(position: Int): Any = nodes.get(position)
+            override fun getItem(position: Int): Any = nodes[position]
 
             override fun isEmpty(): Boolean = nodes.any()
 
@@ -138,47 +175,49 @@ class GraphViewActivity : AppCompatActivity(), NodeOnClick, ArrayResponseHandler
                 val nodeDto = node.data as NodeDto
                 val holder = viewHolder as SimpleViewHolder
                 if (nodeDto.Path.equals(projectName))
-                    holder.textView.setBackgroundColor(resources.getColor(android.R.color.holo_orange_dark))
-                else if(nodeDto.NodeName!!.toUpperCase().contains("[REF]")){
-                    holder.textView.setBackgroundColor(resources.getColor(android.R.color.holo_orange_dark))
+                    holder.textView.setBackgroundColor(ContextCompat.getColor(this@GraphViewActivity, android.R.color.holo_orange_dark))
+                else if(nodeDto.NodeName!!.toUpperCase(Locale.US).contains("[REF]")){
+                    holder.textView.setBackgroundColor(ContextCompat.getColor(this@GraphViewActivity, android.R.color.holo_orange_dark))
                     holder.textView.setOnClickListener {
                         val i = Intent(this@GraphViewActivity, GraphViewActivity::class.java)
                         i.putExtra("user",user)
-                        val newProjectName = ProjectsActivity.user + Constants.PROJECT_DELIMITER + nodeDto.NodeName!!.replace("[REF] ","")
+                        val newProjectName = ProjectsActivity.user + PROJECT_DELIMITER + nodeDto.NodeName!!.replace("[REF] ","")
                         i.putExtra("project", newProjectName)
                         this@GraphViewActivity.startActivity(i)
                     }
-                }else if(nodeDto.NodeName!!.toUpperCase().contains("\n")){
+                    val dataLocal = node.data as NodeDto
+                    holder.textView.setOnLongClickListener { this@GraphViewActivity.onRefLongClick(dataLocal) }
+                }else if(nodeDto.NodeName!!.toUpperCase(Locale.US).contains("\n")){
                     holder.textView.setBackgroundColor(Color.parseColor("#995FA3"))
-                }else if(nodeDto.NodeName!!.toUpperCase().contains("DEPENDENCY")){
+                }else if(nodeDto.NodeName!!.toUpperCase(Locale.US).contains("DEPENDENCY")){
                     holder.textView.setBackgroundColor(Color.parseColor("#FE5F55"))
-                }else if(nodeDto.NodeName!!.toUpperCase().contains("REPOSITORY") || nodeDto.NodeName!!.toUpperCase().contains("REPOSITORIES")) {
+                }else if(nodeDto.NodeName!!.toUpperCase(Locale.US).contains("REPOSITORY") || nodeDto.NodeName!!.toUpperCase(Locale.US).contains("REPOSITORIES")) {
                     holder.textView.setBackgroundColor(Color.parseColor("#adf7b6"))
                     holder.textView.setTextColor(Color.parseColor("#000000"))
-                }else if(nodeDto.NodeName!!.toUpperCase().contains("SERVICE")) {
+                }else if(nodeDto.NodeName!!.toUpperCase(Locale.US).contains("SERVICE")) {
                     holder.textView.setBackgroundColor(Color.parseColor("#ffee93"))
                     holder.textView.setTextColor(Color.parseColor("#000000"))
-                }else if(nodeDto.NodeName!!.toUpperCase().contains("CONTROLLER")){
+                }else if(nodeDto.NodeName!!.toUpperCase(Locale.US).contains("CONTROLLER")){
                     holder.textView.setBackgroundColor(Color.parseColor("#224870"))
-                }else if(nodeDto.NodeName!!.toUpperCase().contains("MODEL")){
+                }else if(nodeDto.NodeName!!.toUpperCase(Locale.US).contains("MODEL")){
                     holder.textView.setBackgroundColor(Color.parseColor("#fcf5c7"))
                     holder.textView.setTextColor(Color.parseColor("#000000"))
-                }else if(nodeDto.NodeName!!.toUpperCase().contains("VIEW")){
+                }else if(nodeDto.NodeName!!.toUpperCase(Locale.US).contains("VIEW")){
                     holder.textView.setBackgroundColor(Color.parseColor("#4EA5D9"))
                     holder.textView.setTextColor(Color.parseColor("#000000"))
                 }
                 else
                     holder.textView.setBackgroundColor(Color.parseColor("#79addc"))
 
-                holder.textView.setText(nodeDto.NodeName!!)
+                holder.textView.text = nodeDto.NodeName
                 if (!nodeDto.NodeName!!.contains("[REF]")){
-                    holder.textView.setOnClickListener { this@GraphViewActivity.onClick(node.data as Object, position) }
+                    holder.textView.setOnClickListener { this@GraphViewActivity.onClick(node.data, position) }
+                    holder.textView.setOnLongClickListener { this@GraphViewActivity.onLongClick(node.data, position) }
                 }
-                holder.textView.setOnLongClickListener { this@GraphViewActivity.onLongClick(node.data as Object, position) }
             }
         }
 
-        graphView!!.setAdapter(adapter);
+        graphView.adapter = adapter
 
         val graphType3 = BuchheimWalkerConfiguration.Builder()
             .setSiblingSeparation(100)
@@ -192,159 +231,209 @@ class GraphViewActivity : AppCompatActivity(), NodeOnClick, ArrayResponseHandler
             .setLevelSeparation(200)
             .build()
         when(graphType){
-            1 -> {
-                graphView!!.setLayout(SugiyamaAlgorithm(graphType1))
-            }
-            2 -> {
-                graphView!!.setLayout(graphType2)
-            }
-            3 -> {
-                graphView!!.setLayout(BuchheimWalkerAlgorithm(graphType3))
-            }
+            1 -> graphView.setLayout(SugiyamaAlgorithm(graphType1))
+            2 -> graphView.setLayout(graphType2)
+            3 -> graphView.setLayout(BuchheimWalkerAlgorithm(graphType3))
         }
+    }
+
+    private fun onRefLongClick(data: NodeDto): Boolean {
+        NodesServices.ConfirmRefNodeDeletion(this, {
+            api!!.deleteNode(NodeDto(projectName, data.NodeName, data.Path)).enqueue(setDefaultHandler(this@GraphViewActivity))
+            api!!.deleteNodesInPath(data.Path!!).enqueue(setArrayDefaultHandler(NullApiRequestHandler()))
+        }, {
+            DependencySelector(this, data, nodesData,
+                NodesServices.DependencySelectedHandler { selected, _ ->
+                    val copy = data.Clone()
+                    copy.AddLink(selected!!)
+                    api!!.updateNode(NodeUpdateDto(data, copy)).enqueue(setDefaultHandler(this@GraphViewActivity))
+                }).showDependencySelector()
+        })
+
+        return true
     }
 
     internal class SimpleViewHolder(itemView: View) :
         GraphView.ViewHolder(itemView) {
-        var textView: TextView
-
-        init {
-            textView = itemView.findViewById(R.id.text)
-        }
+        var textView: TextView = itemView.findViewById(R.id.text)
     }
 
-    override fun onClick(data: Object, position: Int) {
+    override fun onClick(data: Any, position: Int) {
         val parentNode = data as NodeDto
 
         val callback1 = NodesServices.PromptNodeNameCallback { nodeName: String, externalProjectName : String, type: String, refType: String ->
             val path = parentNode.Path+"."+parentNode.NodeName
+            val nullHandler = NullApiRequestHandler<NodeDto>()
             when (type){
-                Constants.NODE_TYPE_MVC -> {
-                    val childPath = path + Constants.PATH_DELIMITER + nodeName
-                    repo!!.AddNode("Controllers", childPath, this)
-                    repo!!.AddNode("Models", childPath, this)
-                    repo!!.AddNode("Views", childPath, this)
-                    repo!!.AddNode(nodeName, path, this)
+                NODE_TYPE_MVC -> {
+                    val childPath = path + PATH_DELIMITER + nodeName
+                    api!!.addNode(NodeDto(projectName, "Controllers", childPath, NODE_TYPE_CONTAINER_CONTROLLER)).enqueue(setDefaultHandler(nullHandler))
+                    api!!.addNode(NodeDto(projectName, "Models", childPath, NODE_TYPE_CONTAINER_MODEL)).enqueue(setDefaultHandler(nullHandler))
+                    api!!.addNode(NodeDto(projectName, "Views", childPath, NODE_TYPE_CONTAINER_VIEW)).enqueue(setDefaultHandler(nullHandler))
+                    api!!.addNode(NodeDto(projectName, nodeName, path, NODE_TYPE_MVC)).enqueue(setDefaultHandler(this))
                 }
-                Constants.NODE_TYPE_SUB_PROJECT -> {
-                    val childPath = path + Constants.PATH_DELIMITER + nodeName
-                    repo!!.AddNode("Implementations", childPath, this)
-                    repo!!.AddNode("Interfaces", childPath, this)
-                    repo!!.AddNode(nodeName, path, this)
+                NODE_TYPE_SUB_PROJECT -> {
+                    val childPath = path + PATH_DELIMITER + nodeName
+                    api!!.addNode(NodeDto(projectName, "Implementations", childPath, NODE_TYPE_CONTAINER_IMPLEMENTATION)).enqueue(setDefaultHandler(nullHandler))
+                    api!!.addNode(NodeDto(projectName, "Interfaces", childPath, NODE_TYPE_CONTAINER_INTERFACES)).enqueue(setDefaultHandler(nullHandler))
+                    api!!.addNode(NodeDto(projectName, nodeName, path, NODE_TYPE_SUB_PROJECT)).enqueue(setDefaultHandler(this))
                 }
-                Constants.NODE_TYPE_INTERFACE -> {
-                    val parentPathArray = parentNode.Path!!.split(Constants.PATH_DELIMITER)
+                NODE_TYPE_INTERFACE -> {
+                    val parentPathArray = parentNode.Path!!.split(PATH_DELIMITER)
                     val newNodeName = "I" + nodeName + parentPathArray[parentPathArray.size-1].singularize()
-                    val childPath = path + Constants.PATH_DELIMITER + newNodeName
-                    repo!!.AddNode("Methods", childPath, this)
-                    repo!!.AddNode("Dependencies", childPath, this)
-                    repo!!.AddNode(newNodeName, path, this)
+                    val childPath = path + PATH_DELIMITER + newNodeName
+                    api!!.addNode(NodeDto(projectName, "Methods", childPath, NODE_TYPE_CONTAINER_METHODS)).enqueue(setDefaultHandler(nullHandler))
+                    api!!.addNode(NodeDto(projectName, "Dependencies", childPath, NODE_TYPE_CONTAINER_DEPENDENCIES)).enqueue(setDefaultHandler(nullHandler))
+                    api!!.addNode(NodeDto(projectName, newNodeName, path, NODE_TYPE_INTERFACE)).enqueue(setDefaultHandler(this))
                 }
-                Constants.NODE_TYPE_IMPLEMENTATION -> {
-                    val parentPathArray = parentNode.Path!!.split(Constants.PATH_DELIMITER)
-                    val newNodeName = nodeName + parentPathArray[parentPathArray.size-1].singularize()
-                    val childPath = path + Constants.PATH_DELIMITER + newNodeName
-                    repo!!.AddNode(newNodeName, path, this)
-                }
-                Constants.NODE_TYPE_CONTROLLER -> {
+                NODE_TYPE_CONTROLLER -> {
                     val newNodeName = nodeName + "Controller"
-                    val childPath = path + Constants.PATH_DELIMITER + newNodeName
-                    repo!!.AddNode("Endpoints", childPath, this)
-                    repo!!.AddNode("Dependencies", childPath, this)
-                    repo!!.AddNode(newNodeName, path, this)
+                    val childPath = path + PATH_DELIMITER + newNodeName
+                    api!!.addNode(NodeDto(projectName, "Endpoints", childPath, NODE_TYPE_CONTAINER_ENDPOINTS)).enqueue(setDefaultHandler(nullHandler))
+                    api!!.addNode(NodeDto(projectName, "Dependencies", childPath, NODE_TYPE_CONTAINER_DEPENDENCIES)).enqueue(setDefaultHandler(nullHandler))
+                    api!!.addNode(NodeDto(projectName, newNodeName, path, NODE_TYPE_CONTROLLER)).enqueue(setDefaultHandler(this))
                 }
-                Constants.NODE_TYPE_MODEL -> {
+                NODE_TYPE_MODEL -> {
                     val newNodeName = nodeName + "Model"
-                    repo!!.AddNode(newNodeName, path, this)
+                    api!!.addNode(NodeDto(projectName, newNodeName, path, NODE_TYPE_MODEL)).enqueue(setDefaultHandler(this))
                 }
-                Constants.NODE_TYPE_VIEW -> {
+                NODE_TYPE_VIEW -> {
                     val newNodeName = nodeName + "View"
-                    repo!!.AddNode(newNodeName, path, this)
+                    api!!.addNode(NodeDto(projectName, newNodeName, path, NODE_TYPE_VIEW)).enqueue(setDefaultHandler(this))
                 }
-                Constants.NODE_TYPE_CRUD -> {
-                    val nodeName = "GetAll${nodeName.pluralize()}\nGet${nodeName}ById\nCreate$nodeName\nUpdate$nodeName\nDelete$nodeName"
-                    repo!!.AddNode(nodeName, path, this)
+                NODE_TYPE_CRUD -> {
+                    val newNodeName = "GetAll${nodeName.pluralize()}\nGet${nodeName}ById\nCreate$nodeName\nUpdate$nodeName\nDelete$nodeName"
+                    api!!.addNode(NodeDto(projectName, newNodeName, path, NODE_TYPE_CRUD)).enqueue(setDefaultHandler(this))
                 }
-                Constants.NODE_TYPE_DEPENDENCY_MODEL -> {
-                    val newNodeName = nodeName + "ModelDependency"
-                    repo!!.AddNode(newNodeName, path, this)
-                }
-                Constants.NODE_TYPE_DEPENDENCY_REPOSITORY -> {
-                    val newNodeName = nodeName + "RepositoryDependency"
-                    repo!!.AddNode(newNodeName, path, this)
-                }
-                Constants.NODE_TYPE_DEPENDENCY_SERVICE ->{
-                    val newNodeName = nodeName + "ServiceDependency"
-                    repo!!.AddNode(newNodeName, path, this)
-                }
-                NODE_TYPE_ADD_REFERENCE ->{
+                NODE_TYPE_ADD_REFERENCE, NODE_TYPE_ADD_NEW_PROJECT_REFERENCE ->{
                     when (refType){
-                        REFERENCE_TYPE_Strategy -> {
-                            var newNodeName = "[REF] "  + if (nodeName.isEmpty()) externalProjectName else nodeName
-                            val childPath = path + Constants.PATH_DELIMITER + nodeName
-
-                            repo!!.AddNode(newNodeName, path, this)
-
+                        REFERENCE_TYPE_MVC->{
+                            val newNodeName = "[REF] "  + if (nodeName.isEmpty()) externalProjectName else nodeName
                             val internalProjectName = ProjectsActivity.user + PROJECT_DELIMITER + nodeName
-
-                            //api!!.addProject(Project(internalProjectName, user, refType)).enqueue(ApiManager.setDefaultHandler(NullApiRequestHandler()))
-                            api!!.addNode(NodeDto(internalProjectName, nodeName, internalProjectName)).enqueue(setDefaultHandler(NullApiRequestHandler()))
-                            api!!.addNode(NodeDto(internalProjectName, "Interfaces", internalProjectName + PATH_DELIMITER + nodeName)).enqueue(setDefaultHandler(NullApiRequestHandler()))
-                            api!!.addNode(NodeDto(internalProjectName, "Implementation", internalProjectName + PATH_DELIMITER + nodeName)).enqueue(setDefaultHandler(NullApiRequestHandler()))
+                            val childPath = internalProjectName + PATH_DELIMITER + nodeName
+                            api!!.addNode(NodeDto(internalProjectName, "Models", childPath, NODE_TYPE_CONTAINER_MODEL)).enqueue(setDefaultHandler(nullHandler))
+                            api!!.addNode(NodeDto(internalProjectName, "Views", childPath, NODE_TYPE_CONTAINER_VIEW)).enqueue(setDefaultHandler(nullHandler))
+                            api!!.addNode(NodeDto(internalProjectName, "Controllers", childPath, NODE_TYPE_CONTAINER_CONTROLLER)).enqueue(setDefaultHandler(nullHandler))
+                            api!!.addNode(NodeDto(internalProjectName, nodeName, internalProjectName, NODE_TYPE_CONTAINER_STRATEGY)).enqueue(setDefaultHandler(nullHandler))
+                            api!!.addNode(NodeDto(projectName, newNodeName, path, NODE_TYPE_ADD_REFERENCE)).enqueue(setDefaultHandler(this))
+                        }
+                        REFERENCE_TYPE_STRATEGY -> {
+                            val newNodeName = "[REF] "  + if (nodeName.isEmpty()) externalProjectName else nodeName
+                            val internalProjectName = ProjectsActivity.user + PROJECT_DELIMITER + nodeName
+                            val childPath = internalProjectName + PATH_DELIMITER + nodeName
+                            api!!.addNode(NodeDto(internalProjectName, "Interfaces", childPath, NODE_TYPE_CONTAINER_INTERFACES)).enqueue(setDefaultHandler(nullHandler))
+                            api!!.addNode(NodeDto(internalProjectName, "Implementation", childPath, NODE_TYPE_CONTAINER_IMPLEMENTATION)).enqueue(setDefaultHandler(nullHandler))
+                            api!!.addNode(NodeDto(internalProjectName, nodeName, internalProjectName, NODE_TYPE_CONTAINER_STRATEGY)).enqueue(setDefaultHandler(nullHandler))
+                            api!!.addNode(NodeDto(projectName, newNodeName, path, NODE_TYPE_ADD_REFERENCE)).enqueue(setDefaultHandler(this))
 
                         }
+                        REFERENCE_TYPE_CONTROLLER->{
+                            val newNodeName = "[REF] "  + if (nodeName.isEmpty()) externalProjectName else nodeName + "Controller"
+                            val internalProjectName = ProjectsActivity.user + PROJECT_DELIMITER + nodeName + "Controller"
+                            val childPath = internalProjectName + PATH_DELIMITER + nodeName + "Controller"
+                            api!!.addNode(NodeDto(internalProjectName, "Endpoints", childPath, NODE_TYPE_CONTAINER_ENDPOINTS)).enqueue(setDefaultHandler(nullHandler))
+                            api!!.addNode(NodeDto(internalProjectName, "Dependencies", childPath, NODE_TYPE_CONTAINER_DEPENDENCIES)).enqueue(setDefaultHandler(nullHandler))
+                            api!!.addNode(NodeDto(internalProjectName, nodeName + "Controller", internalProjectName, NODE_TYPE_CONTAINER_STRATEGY)).enqueue(setDefaultHandler(nullHandler))
+                            api!!.addNode(NodeDto(projectName, newNodeName, path, NODE_TYPE_ADD_REFERENCE)).enqueue(setDefaultHandler(this))
+                        }
+                        REFERENCE_TYPE_MODEL ->{
+                            val newNodeName = "[REF] "  + if (nodeName.isEmpty()) externalProjectName else nodeName
+                            val internalProjectName = ProjectsActivity.user + PROJECT_DELIMITER + nodeName
+                            api!!.addNode(NodeDto(internalProjectName, nodeName, internalProjectName, NODE_TYPE_MODEL)).enqueue(setDefaultHandler(nullHandler))
+                            api!!.addNode(NodeDto(projectName, newNodeName, path, NODE_TYPE_ADD_REFERENCE)).enqueue(setDefaultHandler(this))
+                        }
                         else -> {
-                            var newNodeName = "[REF] "  + if (nodeName.isEmpty()) externalProjectName else nodeName
-                            repo!!.AddNode(newNodeName, path, this)
+                            val newNodeName = "[REF] "  + if (nodeName.isEmpty()) externalProjectName else nodeName
+                            api!!.addNode(NodeDto(projectName, newNodeName, path, NODE_TYPE_ADD_REFERENCE)).enqueue(setDefaultHandler(this))
                         }
                     }
                 }
-                else -> {
-                    repo!!.AddNode(nodeName, path, this)
+                NODE_TYPE_LINK -> {
+                    val callback = NodesServices.DependencySelectedHandler { selected, _ ->
+                        val copy = parentNode.Clone()
+                        copy.AddLink(selected)
+                        api!!.updateNode(NodeUpdateDto(parentNode, copy)).enqueue(setDefaultHandler(this))
+                    }
+                    DependencySelector(this, parentNode, nodesData, callback).showLinkToNodeSelector()
                 }
+                else -> api!!.addNode(NodeDto(projectName, nodeName, path)).enqueue(setDefaultHandler(this))
             }
         }
 
-        var callback2 = NodesServices.NodeZoomCallback {
-            /*MainActivity.tempRootNodeDto = parentNode
-            //repo!!.GetNodes(projectName, this)
-            tvHelper!!.renderTree()
-            toggleZoomNodeButton()*/
+        val callback2 = NodesServices.NodeNeutralCallback {
+            onNeutral(it, parentNode)
         }
 
-        NodesServices.PromptNodeName(this, callback1, callback2)
+        NodesServices.PromptNodeName(this, parentNode.Type, callback1, callback2)
     }
 
-    override fun onLongClick(data: Object, position: Int): Boolean {
-        val parentNode = data as NodeDto
-        val callback2 = NodesServices.NodeDeleteCallback{
-            repo!!.RemoveNode(parentNode.NodeName!!, parentNode.Path!!, this)
-            api!!.deleteNodesInPath(parentNode.Path!!).enqueue(ApiManager.setArrayDefaultHandler(NullApiRequestHandler()))
+    private fun onNeutral(name: String, node: NodeDto) {
+        val nodePathArray = node.Path!!.split(PATH_DELIMITER)
+        val newPath = ArrayList(nodePathArray.dropLast(1))
+        when(node.Type){
+            NODE_TYPE_INTERFACE -> {
+                api!!.addNode(NodeDto(projectName, "Implementation",newPath.joinToString(PATH_DELIMITER), NODE_TYPE_CONTAINER_IMPLEMENTATION) ).enqueue(setDefaultHandler(this))
+                newPath.add("Implementation")
+                val implementationName = name + node.NodeName!!.substring(1, node.NodeName!!.length)
+                api!!.addNode(NodeDto(projectName, implementationName,newPath.joinToString(PATH_DELIMITER), NODE_TYPE_IMPLEMENTATION) ).enqueue(setDefaultHandler(this))
+            }
+            NODE_TYPE_CONTAINER_DEPENDENCIES -> {
+                val callback = object : ArrayResponseHandler<NodeDto> {
+                    override fun onSuccess(collection: Array<NodeDto>) {
+                        val nodesDataLocal = collection.toCollection(ArrayList())
+                        DependencySelector(this@GraphViewActivity, node, nodesDataLocal, NodesServices.DependencySelectedHandler {
+                                selected, _ -> api!!.addNode(NodeDto(projectName, "[REF] " +selected.NodeName, node.Path + PATH_DELIMITER + node.NodeName, NODE_TYPE_ADD_REFERENCE)).enqueue(setDefaultHandler(this@GraphViewActivity))
+                        }).showDependencySelector()
+                    }
+
+                    override fun onError(error: String) {
+                        Toast.makeText(this@GraphViewActivity, error, Toast.LENGTH_LONG).show()
+                    }
+
+                }
+                api!!.getAllNodesByUser(user).enqueue(setArrayDefaultHandler(callback))
+
+            }
         }
-        NodesServices.ConfirmNodeDeletion(this, callback2)
+    }
+
+    override fun onLongClick(data: Any, position: Int): Boolean {
+        val parentNode = data as NodeDto
+        val deleteCallback = NodesServices.NodeDeleteCallback{
+            api!!.deleteNode(NodeDto(projectName, parentNode.NodeName, parentNode.Path)).enqueue(setDefaultHandler(this@GraphViewActivity))
+            api!!.deleteNodesInPath(parentNode.Path!!).enqueue(setArrayDefaultHandler(NullApiRequestHandler()))
+        }
+
+        val updateCallback = NodesServices.NodeUpdateCallback {
+            NodesServices.Rename(this) {
+                val name = it.toString()
+                val changes = parentNode.Clone()
+                changes.NodeName = name
+                api!!.updateNode(NodeUpdateDto(parentNode, changes)).enqueue(setDefaultHandler(this))
+            }
+        }
+
+        NodesServices.ConfirmNodeDeletion(this, deleteCallback, updateCallback)
         return true
     }
 
     override fun onSuccess(collection: Array<NodeDto>) {
-        if (collection.size == 0){
-            var projectNameArray = projectName.split(Constants.PROJECT_DELIMITER)
-            repo!!.AddNode(projectNameArray.last(), projectName, this)
+        if (collection.isEmpty()){
+            val projectNameArray = projectName.split(PROJECT_DELIMITER)
+            api!!.addNode(NodeDto(projectName, projectNameArray.last(), projectName, NODE_TYPE_ROOT)).enqueue(setDefaultHandler(this))
             return
         }
         nodesData = collection.toCollection(ArrayList())
-
-        if (nodesData == null)
-            return
 
         parseNodesData()
     }
 
     override fun onError(error: String) {
-        Toast.makeText(this, "$error", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, error, Toast.LENGTH_SHORT).show()
     }
 
     override fun onSuccess(obj: ResponseObject<NodeDto>) {
         graphType = 1
-        repo!!.GetNodes(projectName, this)
+        api!!.getAllNodes(projectName).enqueue(setArrayDefaultHandler(this))
     }
 }
