@@ -1,4 +1,4 @@
-package app.kevs.treeview
+package app.kevs.treeview.graph_view_activity
 
 import android.content.Intent
 import android.graphics.Color
@@ -37,6 +37,8 @@ import app.kevs.treeview.Constants.Companion.REFERENCE_TYPE_CONTROLLER
 import app.kevs.treeview.Constants.Companion.REFERENCE_TYPE_MODEL
 import app.kevs.treeview.Constants.Companion.REFERENCE_TYPE_MVC
 import app.kevs.treeview.Constants.Companion.REFERENCE_TYPE_STRATEGY
+import app.kevs.treeview.ProjectsActivity
+import app.kevs.treeview.R
 import app.kevs.treeview.helpers.DependencySelector
 import app.kevs.treeview.helpers.NodeOnClick
 import app.kevs.treeview.helpers.NodesServices
@@ -141,7 +143,7 @@ class GraphViewActivity : AppCompatActivity(), NodeOnClick, ArrayResponseHandler
                 }
 
                 if (parentNode != null)
-                    graph.addEdge(it, parentNode)
+                    graph.addEdge(parentNode, it)
             }
         }
 

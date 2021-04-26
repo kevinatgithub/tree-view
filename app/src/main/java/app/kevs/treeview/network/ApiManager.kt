@@ -33,7 +33,7 @@ class ApiManager private  constructor(){
             return ConfigApiGenerator.createServiceMigrateApi(MigrateApi::class.java)
         }
 
-        fun  <T>setArrayDefaultHandler(callback: ArrayResponseHandler<T>) : Callback<Array<T>> {
+        fun <T>setArrayDefaultHandler(callback: ArrayResponseHandler<T>) : Callback<Array<T>> {
             return object : Callback<Array<T>>{
                 override fun onFailure(call: Call<Array<T>>?, t: Throwable?) {
                     callback.onError(t!!.message!!)

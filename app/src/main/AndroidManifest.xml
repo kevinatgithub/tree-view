@@ -13,7 +13,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.TreeView">
         <activity android:name=".SettingsActivity"></activity>
-        <activity android:name=".GraphViewActivity" />
+        <activity android:name=".graph_view_activity.GraphViewActivity" />
         <activity android:name=".ProjectsActivity" />
         <activity android:name=".LoginActivity">
             <intent-filter>
